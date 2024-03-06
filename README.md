@@ -2,9 +2,9 @@
 
 ## Requirements
 
-- Go 1.22
+- Go 1.22+
 - Docker
-- Tailwindcss
+- Node 20+
 
 ## Getting started
 
