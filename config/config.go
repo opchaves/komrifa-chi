@@ -13,6 +13,7 @@ var doOnce sync.Once
 var (
 	Name    = getEnv("APP_NAME", "superapp")
 	Env     = getEnv("APP_ENV", "development")
+	Version = getEnv("APP_VERSION", "v0.0.1")
 	Host    = getEnv("HOST", "0.0.0.0")
 	Port    = getEnv("PORT", "8080")
 	Origins = getEnv("ORIGINS", "")
