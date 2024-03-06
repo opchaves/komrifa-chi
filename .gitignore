@@ -28,6 +28,6 @@ data/
 .env
 .env.local
 
-tailwindcss
+node_modules/
 
 TODO.md

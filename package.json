@@ -1,0 +1,19 @@
+{
+  "name": "stdrifa",
+  "version": "0.0.1",
+  "description": "## Requirements",
+  "main": "tailwind.config.js",
+  "scripts": {
+    "css": "tailwindcss -i assets/css/input.css -o public/css/output.css --minify",
+    "css:watch": "tailwindcss -i assets/css/input.css -o public/css/output.css --watch"
+  },
+  "keywords": [],
+  "author": "Paulo Chaves <opaulochaves@gmail.com>",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "tailwindcss": "^3.4.1",
+    "@tailwindcss/typography": "^0.5.10",
+    "daisyui": "^4.7.2"
+  }
+}

@@ -66,16 +66,16 @@ vet:
 ## css: build tailwindcss
 .PHONY: css
 css:
-	./tailwindcss -i assets/css/input.css -o public/css/output.css --minify
+	@npm run css
 
-## css-watch: watch build tailwindcss
-.PHONY: css-watch
-css-watch:
-	./tailwindcss -i assets/css/input.css -o public/css/output.css --watch
+## css-dev: watch build tailwindcss
+.PHONY: css-dev
+css-dev:
+	@npm run css:watch
 
-## watch-api: watch for changes and restart the server
-.PHONY: watch-api
-watch-api:
+## app-dev: run the app in development mode
+.PHONY: app-dev
+app-dev:
 	@if command -v air > /dev/null; then \
 	  air; \
 	  echo "Watching...";\
@@ -90,6 +90,11 @@ watch-api:
 	    exit 1; \
 	  fi; \
 	fi
+
+## run-dev: build and run the app in development mode
+.PHONY: run-dev
+make run-dev: 
+	make -j 2 css-dev app-dev
 
 ## sqlc: generate Go code from SQL
 .PHONY: sqlc
