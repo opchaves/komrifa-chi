@@ -30,6 +30,15 @@ func (s *Server) Router() *chi.Mux {
 	handlers := app.New(s.DB, s.Logger, s.Templ)
 
 	r.Get("/", handlers.Index)
+
+	r.Route("/auth", func(r chi.Router) {
+		r.Get("/login", handlers.LoginForm)
+		r.Get("/register", handlers.RegisterForm)
+		r.Post("/login", handlers.Login)
+		r.Post("/register", handlers.Register)
+		r.Get("/logout", handlers.Logout)
+	})
+
 	r.Route("/company", func(r chi.Router) {
 		r.Get("/", handlers.CompanyIndex)
 		r.Post("/", handlers.CreateCompany)
