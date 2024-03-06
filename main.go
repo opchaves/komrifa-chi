@@ -1,17 +1,20 @@
 package main
 
 import (
+	"context"
 	"embed"
-	"fmt"
 	"html/template"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
-	"github.com/jritsema/gotoolbox"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jritsema/gotoolbox/web"
 )
 
@@ -19,63 +22,107 @@ var (
 	//go:embed all:templates/*
 	templateFS embed.FS
 
-	//go:embed css/output.css
-	css embed.FS
+	//go:embed all:public/*
+	publicFS embed.FS
 
 	//parsed templates
 	html *template.Template
 )
 
 func main() {
+	// The HTTP Server
+	server := &http.Server{Addr: ":8080", Handler: service()}
 
-	//exit process immediately upon sigterm
-	handleSigTerms()
+	// Server run context
+	serverCtx, serverStopCtx := context.WithCancel(context.Background())
 
-	//parse templates
+	// Listen for syscall signals for process to interrupt/quit
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	go func() {
+		<-sig
+
+		// Shutdown signal with grace period of 30 seconds
+		shutdownCtx, _ := context.WithTimeout(serverCtx, 30*time.Second)
+
+		go func() {
+			<-shutdownCtx.Done()
+			if shutdownCtx.Err() == context.DeadlineExceeded {
+				log.Fatal("graceful shutdown timed out.. forcing exit.")
+			}
+		}()
+
+		// Trigger graceful shutdown
+		err := server.Shutdown(shutdownCtx)
+		if err != nil {
+			log.Fatal(err)
+		}
+		serverStopCtx()
+	}()
+
+	// Run the server
+	err := server.ListenAndServe()
+	if err != nil && err != http.ErrServerClosed {
+		log.Fatal(err)
+	}
+
+	// Wait for server context to be stopped
+	<-serverCtx.Done()
+}
+
+func service() http.Handler {
+	r := chi.NewRouter()
+
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.RequestID)
+	r.Use(middleware.Logger)
+
 	var err error
 	html, err = web.TemplateParseFSRecursive(templateFS, ".html", true, nil)
 	if err != nil {
 		panic(err)
 	}
 
-	//add routes
-	router := http.NewServeMux()
-	router.Handle("/css/output.css", http.FileServer(http.FS(css)))
+	r.Get("/", index)
+	r.Get("/company", companies)
+	r.Post("/company", createCompany)
+	r.Get("/company/add", companyAdd)
+	r.Get("/company/{id}", getCompany)
+	r.Put("/company/{id}", saveCompany)
+	r.Delete("/company/{id}", removeCompany)
+	r.Get("/company/edit/{id}", companyEdit)
 
-	router.Handle("/company/add", web.Action(companyAdd))
-	router.Handle("/company/add/", web.Action(companyAdd))
+	// Create a route along /files that will serve contents from the ./data/ folder.
+	// workDir, _ := os.Getwd()
+	// filesDir := http.Dir(filepath.Join(workDir, "public"))
+	// fileServer(r, "/static", filesDir)
 
-	router.Handle("/company/edit", web.Action(companyEdit))
-	router.Handle("/company/edit/", web.Action(companyEdit))
-
-	router.Handle("/company", web.Action(companies))
-	router.Handle("/company/", web.Action(companies))
-
-	router.Handle("/", web.Action(index))
-	router.Handle("/index.html", web.Action(index))
-
-	//logging/tracing
-	nextRequestID := func() string {
-		return fmt.Sprintf("%d", time.Now().UnixNano())
+	staticContent, err := fs.Sub(fs.FS(publicFS), "public")
+	if err != nil {
+		log.Fatal(err)
 	}
-	logger := log.New(os.Stdout, "http: ", log.LstdFlags)
-	middleware := tracing(nextRequestID)(logging(logger)(router))
+	fileServer(r, "/static", http.FS(staticContent))
 
-	port := gotoolbox.GetEnvWithDefault("PORT", "8080")
-	logger.Println("listening on http://localhost:" + port)
-	if err := http.ListenAndServe(":"+port, middleware); err != nil {
-		logger.Println("http.ListenAndServe():", err)
-		os.Exit(1)
-	}
+	return r
 }
 
-func handleSigTerms() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-c
-		fmt.Println("received SIGTERM, exiting")
-		os.Exit(1)
-	}()
-}
+// fileServer conveniently sets up a http.FileServer handler to serve
+// static files from a http.FileSystem.
+func fileServer(r chi.Router, path string, root http.FileSystem) {
+	if strings.ContainsAny(path, "{}*") {
+		panic("FileServer does not permit any URL parameters.")
+	}
 
+	if path != "/" && path[len(path)-1] != '/' {
+		r.Get(path, http.RedirectHandler(path+"/", 301).ServeHTTP)
+		path += "/"
+	}
+	path += "*"
+
+	r.Get(path, func(w http.ResponseWriter, r *http.Request) {
+		rctx := chi.RouteContext(r.Context())
+		pathPrefix := strings.TrimSuffix(rctx.RoutePattern(), "/*")
+		fs := http.StripPrefix(pathPrefix, http.FileServer(root))
+		fs.ServeHTTP(w, r)
+	})
+}
