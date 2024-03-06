@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Registration Form</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <link href="/static/css/output.css" rel="stylesheet" />
+  </head>
+
+  <body>
+    <div class="relative flex flex-col justify-center h-screen overflow-hidden">
+      <div
+        class="w-full p-6 m-auto bg-white rounded-md shadow-md ring-2 ring-gray-800/50 lg:max-w-xl"
+      >
+        <h1 class="text-3xl font-semibold text-center text-gray-700">
+          New Account
+        </h1>
+        <form class="space-y-4" hx-post="/auth/register">
+          <div>
+            <label class="label">
+              <span class="text-base label-text">Name</span>
+            </label>
+            <input
+              type="text"
+              placeholder="Name"
+              class="w-full input input-bordered"
+            />
+          </div>
+          <div>
+            <label class="label">
+              <span class="text-base label-text">Email</span>
+            </label>
+            <input
+              type="text"
+              placeholder="Email Address"
+              class="w-full input input-bordered"
+            />
+          </div>
+          <div>
+            <label class="label">
+              <span class="text-base label-text">Password</span>
+            </label>
+            <input
+              type="password"
+              placeholder="Enter Password"
+              class="w-full input input-bordered"
+            />
+          </div>
+          <div>
+            <label class="label">
+              <span class="text-base label-text">Confirm Password</span>
+            </label>
+            <input
+              type="password"
+              placeholder="Confirm Password"
+              class="w-full input input-bordered"
+            />
+          </div>
+          <div>
+            <button class="btn btn-block">Sign Up</button>
+          </div>
+          <br />
+          <span
+            >Already have an account ?
+            <a
+              href="/auth/login"
+              class="text-blue-600 hover:text-blue-800 hover:underline"
+              >Login</a
+            ></span
+          >
+        </form>
+      </div>
+    </div>
+  </body>
+</html>
