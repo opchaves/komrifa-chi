@@ -5,7 +5,7 @@
   <td class="whitespace-nowrap px-6 py-4">{{.Country}}</td>
   <td class="whitespace-nowrap px-1 py-1">
     <a
-      hx-get="/company/edit/{{.ID}}"
+      hx-get="/company/{{.ID}}/edit"
       hx-target="#datarow-{{.ID}}"
       hx-swap="outerHTML"
       hx-indicator="#processing"

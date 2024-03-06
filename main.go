@@ -3,12 +3,15 @@ package main
 import (
 	"context"
 	"embed"
+	"fmt"
 	"html/template"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"stdrifa/config"
 	"strings"
 	"syscall"
 	"time"
@@ -31,7 +34,8 @@ var (
 
 func main() {
 	// The HTTP Server
-	server := &http.Server{Addr: ":8080", Handler: service()}
+	addr := fmt.Sprintf(":%s", config.Port)
+	server := &http.Server{Addr: addr, Handler: router()}
 
 	// Server run context
 	serverCtx, serverStopCtx := context.WithCancel(context.Background())
@@ -70,7 +74,7 @@ func main() {
 	<-serverCtx.Done()
 }
 
-func service() http.Handler {
+func router() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(middleware.Recoverer)
@@ -84,24 +88,28 @@ func service() http.Handler {
 	}
 
 	r.Get("/", index)
-	r.Get("/company", companies)
-	r.Post("/company", createCompany)
-	r.Get("/company/add", companyAdd)
-	r.Get("/company/{id}", getCompany)
-	r.Put("/company/{id}", saveCompany)
-	r.Delete("/company/{id}", removeCompany)
-	r.Get("/company/edit/{id}", companyEdit)
+	r.Route("/company", func(r chi.Router) {
+		r.Get("/", companies)
+		r.Post("/", createCompany)
+		r.Get("/add", companyAdd)
+		r.Get("/{id}", getCompany)
+		r.Put("/{id}", saveCompany)
+		r.Delete("/{id}", removeCompany)
+		r.Get("/{id}/edit", companyEdit)
+	})
 
-	// Create a route along /files that will serve contents from the ./data/ folder.
-	// workDir, _ := os.Getwd()
-	// filesDir := http.Dir(filepath.Join(workDir, "public"))
-	// fileServer(r, "/static", filesDir)
-
-	staticContent, err := fs.Sub(fs.FS(publicFS), "public")
-	if err != nil {
-		log.Fatal(err)
+	if config.IsProduction {
+		staticContent, err := fs.Sub(fs.FS(publicFS), "public")
+		if err != nil {
+			log.Fatal(err)
+		}
+		fileServer(r, "/static", http.FS(staticContent))
+	} else {
+		// Create a route along /files that will serve contents from the ./data/ folder.
+		workDir, _ := os.Getwd()
+		filesDir := http.Dir(filepath.Join(workDir, "public"))
+		fileServer(r, "/static", filesDir)
 	}
-	fileServer(r, "/static", http.FS(staticContent))
 
 	return r
 }
